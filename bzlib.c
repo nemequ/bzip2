@@ -8,7 +8,7 @@
   This file is a part of bzip2 and/or libbzip2, a program and
   library for lossless, block-sorting data compression.
 
-  Copyright (C) 1996-1998 Julian R Seward.  All rights reserved.
+  Copyright (C) 1996-1999 Julian R Seward.  All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -41,9 +41,9 @@
   NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-  Julian Seward, Guildford, Surrey, UK.
+  Julian Seward, Cambridge, UK.
   jseward@acm.org
-  bzip2/libbzip2 version 0.9.0 of 28 June 1998
+  bzip2/libbzip2 version 0.9.5 of 24 May 1999
 
   This program is based on (at least) the work of:
      Mike Burrows
@@ -56,6 +56,21 @@
      Jon L. Bentley
 
   For more information on these sources, see the manual.
+--*/
+
+/*--
+   CHANGES
+   ~~~~~~~
+   0.9.0 -- original version.
+
+   0.9.0a/b -- no changes in this file.
+
+   0.9.0c
+      * made zero-length BZ_FLUSH work correctly in bzCompress().
+      * fixed bzWrite/bzRead to ignore zero-length requests.
+      * fixed bzread to correctly handle read requests after EOF.
+      * wrong parameter order in call to bzDecompressInit in
+        bzBuffToBuffDecompress.  Fixed.
 --*/
 
 #include "bzlib_private.h"
@@ -71,14 +86,14 @@
 void bz__AssertH__fail ( int errcode )
 {
    fprintf(stderr, 
-      "\n\nbzip2/libbzip2, v0.9.0: internal error number %d.\n"
-      "This is a bug in bzip2/libbzip2, v0.9.0.  Please report\n"
+      "\n\nbzip2/libbzip2, v0.9.5d: internal error number %d.\n"
+      "This is a bug in bzip2/libbzip2, v0.9.5d.  Please report\n"
       "it to me at: jseward@acm.org.  If this happened when\n"
       "you were using some program which uses libbzip2 as a\n"
       "component, you should also report this bug to the author(s)\n"
       "of that program.  Please make an effort to report this bug;\n"
       "timely and accurate bug reports eventually lead to higher\n"
-      "quality software.  Thx.  Julian Seward, 27 June 1998.\n\n",
+      "quality software.  Thanks.  Julian Seward, 4 Sept 1999.\n\n",
       errcode
    );
    exit(3);
@@ -156,28 +171,22 @@ int BZ_API(bzCompressInit)
    if (s == NULL) return BZ_MEM_ERROR;
    s->strm = strm;
 
-   s->block    = NULL;
-   s->quadrant = NULL;
-   s->zptr     = NULL;
-   s->ftab     = NULL;
+   s->arr1 = NULL;
+   s->arr2 = NULL;
+   s->ftab = NULL;
 
-   n           = 100000 * blockSize100k;
-   s->block    = BZALLOC( (n + BZ_NUM_OVERSHOOT_BYTES) * sizeof(UChar) );
-   s->quadrant = BZALLOC( (n + BZ_NUM_OVERSHOOT_BYTES) * sizeof(Int16) );
-   s->zptr     = BZALLOC( n                            * sizeof(Int32) );
-   s->ftab     = BZALLOC( 65537                        * sizeof(Int32) );
+   n       = 100000 * blockSize100k;
+   s->arr1 = BZALLOC( n                  * sizeof(UInt32) );
+   s->arr2 = BZALLOC( (n+BZ_N_OVERSHOOT) * sizeof(UInt32) );
+   s->ftab = BZALLOC( 65537              * sizeof(UInt32) );
 
-   if (s->block == NULL || s->quadrant == NULL ||
-       s->zptr == NULL  || s->ftab == NULL) {
-      if (s->block    != NULL) BZFREE(s->block);
-      if (s->quadrant != NULL) BZFREE(s->quadrant);
-      if (s->zptr     != NULL) BZFREE(s->zptr);
-      if (s->ftab     != NULL) BZFREE(s->ftab);
-      if (s           != NULL) BZFREE(s);
+   if (s->arr1 == NULL || s->arr2 == NULL || s->ftab == NULL) {
+      if (s->arr1 != NULL) BZFREE(s->arr1);
+      if (s->arr2 != NULL) BZFREE(s->arr2);
+      if (s->ftab != NULL) BZFREE(s->ftab);
+      if (s       != NULL) BZFREE(s);
       return BZ_MEM_ERROR;
    }
-
-   s->szptr = (UInt16*)(s->zptr);
 
    s->blockNo           = 0;
    s->state             = BZ_S_INPUT;
@@ -187,7 +196,12 @@ int BZ_API(bzCompressInit)
    s->nblockMAX         = 100000 * blockSize100k - 19;
    s->verbosity         = verbosity;
    s->workFactor        = workFactor;
-   s->nBlocksRandomised = 0;
+
+   s->block             = (UInt16*)s->arr2;
+   s->mtfv              = (UInt16*)s->arr1;
+   s->zbits             = NULL;
+   s->ptr               = (UInt32*)s->arr1;
+
    strm->state          = s;
    strm->total_in       = 0;
    strm->total_out      = 0;
@@ -209,24 +223,24 @@ void add_pair_to_block ( EState* s )
    s->inUse[s->state_in_ch] = True;
    switch (s->state_in_len) {
       case 1:
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
          break;
       case 2:
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
          break;
       case 3:
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
          break;
       default:
          s->inUse[s->state_in_len-4] = True;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)ch; s->nblock++;
-         s->block[s->nblock] = (UChar)(s->state_in_len-4);
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = (UInt16)ch; s->nblock++;
+         s->block[s->nblock] = ((UInt16)(s->state_in_len-4));
          s->nblock++;
          break;
    }
@@ -252,7 +266,7 @@ void flush_RL ( EState* s )
       UChar ch = (UChar)(zs->state_in_ch);        \
       BZ_UPDATE_CRC( zs->blockCRC, ch );          \
       zs->inUse[zs->state_in_ch] = True;          \
-      zs->block[zs->nblock] = (UChar)ch;          \
+      zs->block[zs->nblock] = (UInt16)ch;         \
       zs->nblock++;                               \
       zs->state_in_ch = zchh;                     \
    }                                              \
@@ -293,7 +307,7 @@ Bool copy_input_until_stop ( EState* s )
 
    } else {
 
-      /*-- general, common case --*/
+      /*-- general, uncommon case --*/
       while (True) {
          /*-- block full? --*/
          if (s->nblock >= s->nblockMAX) break;
@@ -328,7 +342,7 @@ Bool copy_output_until_stop ( EState* s )
       if (s->state_out_pos >= s->numZ) break;
 
       progress_out = True;
-      *(s->strm->next_out) = ((UChar*)(s->quadrant))[s->state_out_pos];
+      *(s->strm->next_out) = s->zbits[s->state_out_pos];
       s->state_out_pos++;
       s->strm->avail_out--;
       s->strm->next_out++;
@@ -353,18 +367,21 @@ Bool handle_compress ( bz_stream* strm )
       if (s->state == BZ_S_OUTPUT) {
          progress_out |= copy_output_until_stop ( s );
          if (s->state_out_pos < s->numZ) break;
-         if (s->mode != BZ_M_RUNNING && 
+         if (s->mode == BZ_M_FINISHING && 
              s->avail_in_expect == 0 &&
              isempty_RL(s)) break;
          prepare_new_block ( s );
          s->state = BZ_S_INPUT;
+         if (s->mode == BZ_M_FLUSHING && 
+             s->avail_in_expect == 0 &&
+             isempty_RL(s)) break;
       }
 
       if (s->state == BZ_S_INPUT) {
          progress_in |= copy_input_until_stop ( s );
          if (s->mode != BZ_M_RUNNING && s->avail_in_expect == 0) {
             flush_RL ( s );
-            compressBlock ( s, s->mode == BZ_M_FINISHING );
+            compressBlock ( s, (Bool)(s->mode == BZ_M_FINISHING) );
             s->state = BZ_S_OUTPUT;
          }
          else
@@ -377,6 +394,7 @@ Bool handle_compress ( bz_stream* strm )
             break;
          }
       }
+
    }
 
    return progress_in || progress_out;
@@ -423,8 +441,8 @@ int BZ_API(bzCompress) ( bz_stream *strm, int action )
          if (action != BZ_FLUSH) return BZ_SEQUENCE_ERROR;
          if (s->avail_in_expect != s->strm->avail_in) return BZ_SEQUENCE_ERROR;
          progress = handle_compress ( strm );
-         if (!progress) return BZ_SEQUENCE_ERROR;
-         if (s->avail_in_expect > 0) return BZ_FLUSH_OK;
+         if (s->avail_in_expect > 0 || !isempty_RL(s) ||
+             s->state_out_pos < s->numZ) return BZ_FLUSH_OK;
          s->mode = BZ_M_RUNNING;
          return BZ_RUN_OK;
 
@@ -451,10 +469,9 @@ int BZ_API(bzCompressEnd)  ( bz_stream *strm )
    if (s == NULL) return BZ_PARAM_ERROR;
    if (s->strm != strm) return BZ_PARAM_ERROR;
 
-   if (s->block    != NULL) BZFREE(s->block);
-   if (s->quadrant != NULL) BZFREE(s->quadrant);
-   if (s->zptr     != NULL) BZFREE(s->zptr);
-   if (s->ftab     != NULL) BZFREE(s->ftab);
+   if (s->arr1 != NULL) BZFREE(s->arr1);
+   if (s->arr2 != NULL) BZFREE(s->arr2);
+   if (s->ftab != NULL) BZFREE(s->ftab);
    BZFREE(strm->state);
 
    strm->state = NULL;   
@@ -797,7 +814,8 @@ int BZ_API(bzDecompress) ( bz_stream *strm )
    }
 
    AssertH ( 0, 6001 );
-   /*notreached*/
+
+   return 0;  /*NOTREACHED*/
 }
 
 
@@ -920,6 +938,9 @@ void BZ_API(bzWrite)
       { BZ_SETERR(BZ_SEQUENCE_ERROR); return; };
    if (ferror(bzf->handle))
       { BZ_SETERR(BZ_IO_ERROR); return; };
+
+   if (len == 0)
+      { BZ_SETERR(BZ_OK); return; };
 
    bzf->strm.avail_in = len;
    bzf->strm.next_in  = buf;
@@ -1093,6 +1114,9 @@ int BZ_API(bzRead)
    if (bzf->writing)
       { BZ_SETERR(BZ_SEQUENCE_ERROR); return 0; };
 
+   if (len == 0)
+      { BZ_SETERR(BZ_OK); return 0; };
+
    bzf->strm.avail_out = len;
    bzf->strm.next_out = buf;
 
@@ -1231,7 +1255,7 @@ int BZ_API(bzBuffToBuffDecompress)
    strm.bzalloc = NULL;
    strm.bzfree = NULL;
    strm.opaque = NULL;
-   ret = bzDecompressInit ( &strm, small, verbosity );
+   ret = bzDecompressInit ( &strm, verbosity, small );
    if (ret != BZ_OK) return ret;
 
    strm.next_in = source;
@@ -1259,7 +1283,7 @@ int BZ_API(bzBuffToBuffDecompress)
 
    errhandler:
    bzDecompressEnd ( &strm );
-   return BZ_SEQUENCE_ERROR;
+   return ret; 
 }
 
 
@@ -1277,7 +1301,7 @@ int BZ_API(bzBuffToBuffDecompress)
 
 /*---------------------------------------------------*/
 /*--
-   return version like "0.9.0".
+   return version like "0.9.0c".
 --*/
 const char * BZ_API(bzlibVersion)(void)
 {
@@ -1314,24 +1338,18 @@ BZFILE * bzopen_or_bzdopen
    int    smallMode     = 0;
    int    nUnused       = 0; 
 
-   if(mode==NULL){return NULL;}
-   while(*mode){
-      switch(*mode){
+   if (mode == NULL) return NULL;
+   while (*mode) {
+      switch (*mode) {
       case 'r':
-         writing = 0;break;
+         writing = 0; break;
       case 'w':
-         writing = 1;break;
+         writing = 1; break;
       case 's':
-         smallMode = 1;break;
+         smallMode = 1; break;
       default:
-         if(isdigit(*mode)){
-            blockSize100k = 0;
-            while(isdigit(*mode)){
-               blockSize100k = blockSize100k*10 + *mode-'0';
-               mode++;
-            }
-         }else{
-            /* ignore */
+         if (isdigit((int)(*mode))) {
+            blockSize100k = *mode-'0';
          }
       }
       mode++;
@@ -1339,29 +1357,32 @@ BZFILE * bzopen_or_bzdopen
    strcat(mode2, writing ? "w" : "r" );
    strcat(mode2,"b");   /* binary mode */
 
-   if(open_mode==0){
-      if(path==NULL || strcmp(path,"")==0){
+   if (open_mode==0) {
+      if (path==NULL || strcmp(path,"")==0) {
         fp = (writing ? stdout : stdin);
         SET_BINARY_MODE(fp);
-      }else{
+      } else {
         fp = fopen(path,mode2);
       }
-   }else{
+   } else {
 #ifdef BZ_STRICT_ANSI
       fp = NULL;
 #else
       fp = fdopen(fd,mode2);
 #endif
    }
-   if(fp==NULL){return NULL;}
+   if (fp == NULL) return NULL;
 
-   if(writing){
+   if (writing) {
+      /* Guard against total chaos and anarchy -- JRS */
+      if (blockSize100k < 1) blockSize100k = 1;
+      if (blockSize100k > 9) blockSize100k = 9; 
       bzfp = bzWriteOpen(&bzerr,fp,blockSize100k,verbosity,workFactor);
-   }else{
+   } else {
       bzfp = bzReadOpen(&bzerr,fp,verbosity,smallMode,unused,nUnused);
    }
-   if(bzfp==NULL){
-      if(fp!=stdin && fp!=stdout) fclose(fp);
+   if (bzfp == NULL) {
+      if (fp != stdin && fp != stdout) fclose(fp);
       return NULL;
    }
    return bzfp;
@@ -1394,8 +1415,9 @@ BZFILE * BZ_API(bzdopen)
 /*---------------------------------------------------*/
 int BZ_API(bzread) (BZFILE* b, void* buf, int len )
 {
-   int bzerr;
-   int nread = bzRead(&bzerr,b,buf,len);
+   int bzerr, nread;
+   if (((bzFile*)b)->lastErr == BZ_STREAM_END) return 0;
+   nread = bzRead(&bzerr,b,buf,len);
    if (bzerr == BZ_OK || bzerr == BZ_STREAM_END) {
       return nread;
    } else {
@@ -1432,7 +1454,7 @@ void BZ_API(bzclose) (BZFILE* b)
    int bzerr;
    FILE *fp = ((bzFile *)b)->handle;
    
-   if(b==NULL){return;}
+   if (b==NULL) {return;}
    if(((bzFile*)b)->writing){
       bzWriteClose(&bzerr,b,0,NULL,NULL);
       if(bzerr != BZ_OK){

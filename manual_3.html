@@ -1,7 +1,7 @@
 <HTML>
 <HEAD>
 <!-- This HTML file has been created by texi2html 1.51
-     from manual.texi on 23 August 1998 -->
+     from manual.texi on 4 September 1999 -->
 
 <TITLE>bzip2 and libbzip2 - Programming with libbzip2</TITLE>
 </HEAD>
@@ -10,7 +10,7 @@ Go to the <A HREF="manual_1.html">first</A>, <A HREF="manual_2.html">previous</A
 <P><HR><P>
 
 
-<H1><A NAME="SEC3" HREF="manual_toc.html#TOC3">Programming with <CODE>libbzip2</CODE></A></H1>
+<H1><A NAME="SEC12" HREF="manual_toc.html#TOC12">Programming with <CODE>libbzip2</CODE></A></H1>
 
 <P>
 This chapter describes the programming interface to <CODE>libbzip2</CODE>.
@@ -24,7 +24,7 @@ as well.
 </P>
 
 
-<H2><A NAME="SEC4" HREF="manual_toc.html#TOC4">Top-level structure</A></H2>
+<H2><A NAME="SEC13" HREF="manual_toc.html#TOC13">Top-level structure</A></H2>
 
 <P>
 <CODE>libbzip2</CODE> is a flexible library for compressing and decompressing
@@ -42,7 +42,7 @@ library.
 </P>
 
 
-<H3><A NAME="SEC5" HREF="manual_toc.html#TOC5">Low-level summary</A></H3>
+<H3><A NAME="SEC14" HREF="manual_toc.html#TOC14">Low-level summary</A></H3>
 
 <P>
 This interface provides services for compressing and decompressing
@@ -82,7 +82,7 @@ both.
 
 
 
-<H3><A NAME="SEC6" HREF="manual_toc.html#TOC6">High-level summary</A></H3>
+<H3><A NAME="SEC15" HREF="manual_toc.html#TOC15">High-level summary</A></H3>
 
 <P>
 This interface provides some handy wrappers around the low-level
@@ -121,7 +121,7 @@ imposition on the programmer.
 
 
 
-<H3><A NAME="SEC7" HREF="manual_toc.html#TOC7">Utility functions summary</A></H3>
+<H3><A NAME="SEC16" HREF="manual_toc.html#TOC16">Utility functions summary</A></H3>
 <P>
 For very simple needs, <CODE>bzBuffToBuffCompress</CODE> and
 <CODE>bzBuffToBuffDecompress</CODE> are provided.  These compress
@@ -141,7 +141,7 @@ give better <CODE>zlib</CODE> compatibility.  These functions are
 <CODE>bzerror</CODE> and <CODE>bzlibVersion</CODE>.  You may find these functions
 more convenient for simple file reading and writing, than those in the
 high-level interface.  These functions are not (yet) officially part of
-the library, and are not further documented here.  If they break, you
+the library, and are minimally documented here.  If they break, you
 get to keep all the pieces.  I hope to document them properly when time
 permits.
 
@@ -154,7 +154,7 @@ built as a Windows DLL.
 
 
 
-<H2><A NAME="SEC8" HREF="manual_toc.html#TOC8">Error handling</A></H2>
+<H2><A NAME="SEC17" HREF="manual_toc.html#TOC17">Error handling</A></H2>
 
 <P>
 The library is designed to recover cleanly in all situations, including
@@ -260,11 +260,11 @@ will not fit into the output buffer provided.
 
 
 
-<H2><A NAME="SEC9" HREF="manual_toc.html#TOC9">Low-level interface</A></H2>
+<H2><A NAME="SEC18" HREF="manual_toc.html#TOC18">Low-level interface</A></H2>
 
 
 
-<H3><A NAME="SEC10" HREF="manual_toc.html#TOC10"><CODE>bzCompressInit</CODE></A></H3>
+<H3><A NAME="SEC19" HREF="manual_toc.html#TOC19"><CODE>bzCompressInit</CODE></A></H3>
 
 <PRE>
 typedef 
@@ -352,29 +352,39 @@ setting.
 </P>
 <P>
 Parameter <CODE>workFactor</CODE> controls how the compression phase behaves
-when presented with worst case, highly repetitive, input data.
-If compression runs into difficulties caused by repetitive data,
-some pseudo-random variations are inserted into the block, and
-compression is restarted.  Lower values of <CODE>workFactor</CODE>
-reduce the tolerance of compression to repetitive data.
-You should set this parameter carefully; too low, and 
-compression ratio suffers, too high, and your average-to-worst
-case compression times can become very large.  
-The default value of 30
-gives reasonable behaviour over a wide range of circumstances.
+when presented with worst case, highly repetitive, input data.  If
+compression runs into difficulties caused by repetitive data, the
+library switches from the standard sorting algorithm to a fallback
+algorithm.  The fallback is slower than the standard algorithm by
+perhaps a factor of three, but always behaves reasonably, no matter how
+bad the input.
 
 </P>
 <P>
-Allowable values range from 0 to 250 inclusive.  0 is a special
-case, equivalent to using the default value of 30.
+Lower values of <CODE>workFactor</CODE> reduce the amount of effort the
+standard algorithm will expend before resorting to the fallback.  You
+should set this parameter carefully; too low, and many inputs will be
+handled by the fallback algorithm and so compress rather slowly, too
+high, and your average-to-worst case compression times can become very
+large.  The default value of 30 gives reasonable behaviour over a wide
+range of circumstances.
 
 </P>
 <P>
-Note that the randomisation process is entirely transparent.  
-If the library decides to randomise and restart compression on a
-block, it does so without comment.  Randomised blocks are
-automatically de-randomised during decompression, so data
-integrity is never compromised.
+Allowable values range from 0 to 250 inclusive.  0 is a special case,
+equivalent to using the default value of 30.
+
+</P>
+<P>
+Note that the compressed output generated is the same regardless of
+whether or not the fallback algorithm is used.
+
+</P>
+<P>
+Be aware also that this parameter may disappear entirely in future
+versions of the library.  In principle it should be possible to devise a
+good way to automatically choose which algorithm to use.  Such a
+mechanism would render the parameter obsolete.
 
 </P>
 <P>
@@ -403,7 +413,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC11" HREF="manual_toc.html#TOC11"><CODE>bzCompress</CODE></A></H3>
+<H3><A NAME="SEC20" HREF="manual_toc.html#TOC20"><CODE>bzCompress</CODE></A></H3>
 
 <PRE>
    int bzCompress ( bz_stream *strm, int action );
@@ -543,7 +553,8 @@ RUNNING/<CODE>BZ_FINISH</CODE>
 FLUSHING/<CODE>BZ_FLUSH</CODE>  
       Compress from <CODE>next_in</CODE> to <CODE>next_out</CODE> as much as possible, 
       but do not accept any more input.  
-      If all the existing input has been used up
+      If all the existing input has been used up and all compressed
+      output has been removed
          Next state = RUNNING; Return value = <CODE>BZ_RUN_OK</CODE>
       else
          Next state = FLUSHING; Return value = <CODE>BZ_FLUSH_OK</CODE>
@@ -608,7 +619,7 @@ Trivial other possible return values:
 
 
 
-<H3><A NAME="SEC12" HREF="manual_toc.html#TOC12"><CODE>bzCompressEnd</CODE></A></H3>
+<H3><A NAME="SEC21" HREF="manual_toc.html#TOC21"><CODE>bzCompressEnd</CODE></A></H3>
 
 <PRE>
 int bzCompressEnd ( bz_stream *strm );
@@ -628,7 +639,7 @@ Possible return values:
 
 
 
-<H3><A NAME="SEC13" HREF="manual_toc.html#TOC13"><CODE>bzDecompressInit</CODE></A></H3>
+<H3><A NAME="SEC22" HREF="manual_toc.html#TOC22"><CODE>bzDecompressInit</CODE></A></H3>
 
 <PRE>
 int bzDecompressInit ( bz_stream *strm, int verbosity, int small );
@@ -689,7 +700,7 @@ Allowable next actions:
 </P>
 
 
-<H3><A NAME="SEC14" HREF="manual_toc.html#TOC14"><CODE>bzDecompress</CODE></A></H3>
+<H3><A NAME="SEC23" HREF="manual_toc.html#TOC23"><CODE>bzDecompress</CODE></A></H3>
 
 <PRE>
 int bzDecompress ( bz_stream *strm );
@@ -780,7 +791,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC15" HREF="manual_toc.html#TOC15"><CODE>bzDecompressEnd</CODE></A></H3>
+<H3><A NAME="SEC24" HREF="manual_toc.html#TOC24"><CODE>bzDecompressEnd</CODE></A></H3>
 
 <PRE>
 int bzDecompressEnd ( bz_stream *strm );
@@ -809,7 +820,7 @@ Allowable next actions:
 
 
 
-<H2><A NAME="SEC16" HREF="manual_toc.html#TOC16">High-level interface</A></H2>
+<H2><A NAME="SEC25" HREF="manual_toc.html#TOC25">High-level interface</A></H2>
 
 <P>
 This interface provides functions for reading and writing 
@@ -860,7 +871,7 @@ This interface provides functions for reading and writing
 
 
 
-<H3><A NAME="SEC17" HREF="manual_toc.html#TOC17"><CODE>bzReadOpen</CODE></A></H3>
+<H3><A NAME="SEC26" HREF="manual_toc.html#TOC26"><CODE>bzReadOpen</CODE></A></H3>
 
 <PRE>
    typedef void BZFILE;
@@ -938,7 +949,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC18" HREF="manual_toc.html#TOC18"><CODE>bzRead</CODE></A></H3>
+<H3><A NAME="SEC27" HREF="manual_toc.html#TOC27"><CODE>bzRead</CODE></A></H3>
 
 <PRE>
    int bzRead ( int *bzerror, BZFILE *b, void *buf, int len );
@@ -1025,7 +1036,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC19" HREF="manual_toc.html#TOC19"><CODE>bzReadGetUnused</CODE></A></H3>
+<H3><A NAME="SEC28" HREF="manual_toc.html#TOC28"><CODE>bzReadGetUnused</CODE></A></H3>
 
 <PRE>
    void bzReadGetUnused ( int* bzerror, BZFILE *b, 
@@ -1067,7 +1078,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC20" HREF="manual_toc.html#TOC20"><CODE>bzReadClose</CODE></A></H3>
+<H3><A NAME="SEC29" HREF="manual_toc.html#TOC29"><CODE>bzReadClose</CODE></A></H3>
 
 <PRE>
    void bzReadClose ( int *bzerror, BZFILE *b );
@@ -1100,7 +1111,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC21" HREF="manual_toc.html#TOC21"><CODE>bzWriteOpen</CODE></A></H3>
+<H3><A NAME="SEC30" HREF="manual_toc.html#TOC30"><CODE>bzWriteOpen</CODE></A></H3>
 
 <PRE>
    BZFILE *bzWriteOpen ( int *bzerror, FILE *f, 
@@ -1165,7 +1176,7 @@ Allowable next actions:
 
 
 
-<H3><A NAME="SEC22" HREF="manual_toc.html#TOC22"><CODE>bzWrite</CODE></A></H3>
+<H3><A NAME="SEC31" HREF="manual_toc.html#TOC31"><CODE>bzWrite</CODE></A></H3>
 
 <PRE>
    void bzWrite ( int *bzerror, BZFILE *b, void *buf, int len );
@@ -1192,7 +1203,7 @@ Possible assignments to <CODE>bzerror</CODE>:
 
 
 
-<H3><A NAME="SEC23" HREF="manual_toc.html#TOC23"><CODE>bzWriteClose</CODE></A></H3>
+<H3><A NAME="SEC32" HREF="manual_toc.html#TOC32"><CODE>bzWriteClose</CODE></A></H3>
 
 <PRE>
    int bzWriteClose ( int *bzerror, BZFILE* f,
@@ -1240,7 +1251,7 @@ Possible assignments to <CODE>bzerror</CODE>:
 
 
 
-<H3><A NAME="SEC24" HREF="manual_toc.html#TOC24">Handling embedded compressed data streams</A></H3>
+<H3><A NAME="SEC33" HREF="manual_toc.html#TOC33">Handling embedded compressed data streams</A></H3>
 
 <P>
 The high-level library facilitates use of
@@ -1288,7 +1299,7 @@ to grips with the low-level interface.
 </P>
 
 
-<H3><A NAME="SEC25" HREF="manual_toc.html#TOC25">Standard file-reading/writing code</A></H3>
+<H3><A NAME="SEC34" HREF="manual_toc.html#TOC34">Standard file-reading/writing code</A></H3>
 <P>
 Here's how you'd write data to a compressed file:
 
@@ -1363,10 +1374,10 @@ if (bzerror != BZ_STREAM_END) {
 
 
 
-<H2><A NAME="SEC26" HREF="manual_toc.html#TOC26">Utility functions</A></H2>
+<H2><A NAME="SEC35" HREF="manual_toc.html#TOC35">Utility functions</A></H2>
 
 
-<H3><A NAME="SEC27" HREF="manual_toc.html#TOC27"><CODE>bzBuffToBuffCompress</CODE></A></H3>
+<H3><A NAME="SEC36" HREF="manual_toc.html#TOC36"><CODE>bzBuffToBuffCompress</CODE></A></H3>
 
 <PRE>
    int bzBuffToBuffCompress( char*         dest,
@@ -1403,7 +1414,7 @@ and <CODE>workFactor</CODE>, <BR> see <CODE>bzCompressInit</CODE>.
 <P>
 To guarantee that the compressed data will fit in its buffer, allocate
 an output buffer of size 1% larger than the uncompressed data, plus
-fifty bytes.
+six hundred extra bytes.
 
 </P>
 <P>
@@ -1430,7 +1441,7 @@ Possible return values:
 
 
 
-<H3><A NAME="SEC28" HREF="manual_toc.html#TOC28"><CODE>bzBuffToBuffDecompress</CODE></A></H3>
+<H3><A NAME="SEC37" HREF="manual_toc.html#TOC37"><CODE>bzBuffToBuffDecompress</CODE></A></H3>
 
 <PRE>
    int bzBuffToBuffDecompress ( char*         dest,
@@ -1498,11 +1509,73 @@ Possible return values:
 
 
 
-<H2><A NAME="SEC29" HREF="manual_toc.html#TOC29">Using the library in a <CODE>stdio</CODE>-free environment</A></H2>
+<H2><A NAME="SEC38" HREF="manual_toc.html#TOC38"><CODE>zlib</CODE> compatibility functions</A></H2>
+<P>
+Yoshioka Tsuneo has contributed some functions to
+give better <CODE>zlib</CODE> compatibility.  These functions are
+<CODE>bzopen</CODE>, <CODE>bzread</CODE>, <CODE>bzwrite</CODE>, <CODE>bzflush</CODE>,
+<CODE>bzclose</CODE>,
+<CODE>bzerror</CODE> and <CODE>bzlibVersion</CODE>.
+These functions are not (yet) officially part of
+the library.  If they break, you get to keep all the pieces.
+Nevertheless, I think they work ok.
+
+<PRE>
+typedef void BZFILE;
+
+const char * bzlibVersion ( void );
+</PRE>
+
+<P>
+Returns a string indicating the library version.
+
+<PRE>
+BZFILE * bzopen  ( const char *path, const char *mode );
+BZFILE * bzdopen ( int        fd,    const char *mode );
+</PRE>
+
+<P>
+Opens a <CODE>.bz2</CODE> file for reading or writing, using either its name
+or a pre-existing file descriptor. 
+Analogous to <CODE>fopen</CODE> and <CODE>fdopen</CODE>.
+
+<PRE>
+int bzread  ( BZFILE* b, void* buf, int len );
+int bzwrite ( BZFILE* b, void* buf, int len );
+</PRE>
+
+<P>
+Reads/writes data from/to a previously opened <CODE>BZFILE</CODE>.
+Analogous to <CODE>fread</CODE> and <CODE>fwrite</CODE>.
+
+<PRE>
+int  bzflush ( BZFILE* b );
+void bzclose ( BZFILE* b );
+</PRE>
+
+<P>
+Flushes/closes a <CODE>BZFILE</CODE>.  <CODE>bzflush</CODE> doesn't actually do
+anything.  Analogous to <CODE>fflush</CODE> and <CODE>fclose</CODE>.
+
+</P>
+
+<PRE>
+const char * bzerror ( BZFILE *b, int *errnum )
+</PRE>
+
+<P>
+Returns a string describing the more recent error status of
+<CODE>b</CODE>, and also sets <CODE>*errnum</CODE> to its numerical value.
+
+</P>
 
 
 
-<H3><A NAME="SEC30" HREF="manual_toc.html#TOC30">Getting rid of <CODE>stdio</CODE></A></H3>
+<H2><A NAME="SEC39" HREF="manual_toc.html#TOC39">Using the library in a <CODE>stdio</CODE>-free environment</A></H2>
+
+
+
+<H3><A NAME="SEC40" HREF="manual_toc.html#TOC40">Getting rid of <CODE>stdio</CODE></A></H3>
 
 <P>
 In a deeply embedded application, you might want to use just
@@ -1525,7 +1598,7 @@ settings.
 </P>
 
 
-<H3><A NAME="SEC31" HREF="manual_toc.html#TOC31">Critical error handling</A></H3>
+<H3><A NAME="SEC41" HREF="manual_toc.html#TOC41">Critical error handling</A></H3>
 <P>
 <CODE>libbzip2</CODE> contains a number of internal assertion checks which
 should, needless to say, never be activated.  Nevertheless, if an
@@ -1537,14 +1610,14 @@ was compiled with <CODE>BZ_NO_STDIO</CODE> set.
 For a normal compile, an assertion failure yields the message
 
 <PRE>
-   bzip2/libbzip2, v0.9.0: internal error number N.
-   This is a bug in bzip2/libbzip2, v0.9.0.  Please report
+   bzip2/libbzip2, v0.9.5: internal error number N.
+   This is a bug in bzip2/libbzip2, v0.9.5.  Please report
    it to me at: jseward@acm.org.  If this happened when
    you were using some program which uses libbzip2 as a
    component, you should also report this bug to the author(s)
    of that program.  Please make an effort to report this bug;
    timely and accurate bug reports eventually lead to higher
-   quality software.  Thx.  Julian Seward, 27 June 1998.
+   quality software.  Thanks.  Julian Seward, 24 May 1999.
 </PRE>
 
 <P>
@@ -1582,7 +1655,7 @@ and can be recovered from.
 
 
 
-<H2><A NAME="SEC32" HREF="manual_toc.html#TOC32">Making a Windows DLL</A></H2>
+<H2><A NAME="SEC42" HREF="manual_toc.html#TOC42">Making a Windows DLL</A></H2>
 <P>
 Everything related to Windows has been contributed by Yoshioka Tsuneo
 <BR> (<CODE>QWF00133@niftyserve.or.jp</CODE> /
@@ -1600,7 +1673,7 @@ If you can't
 open the project file for some reason, make a new one, naming these files:
 <CODE>blocksort.c</CODE>, <CODE>bzlib.c</CODE>, <CODE>compress.c</CODE>, 
 <CODE>crctable.c</CODE>, <CODE>decompress.c</CODE>, <CODE>huffman.c</CODE>, <BR>
-<CODE>randtable.c</CODE> and <CODE>libbz2.def</CODE>.  You might also need
+<CODE>randtable.c</CODE> and <CODE>libbz2.def</CODE>.  You will also need
 to name the header files <CODE>bzlib.h</CODE> and <CODE>bzlib_private.h</CODE>.
 
 </P>
@@ -1612,6 +1685,18 @@ If you don't use VC++, you may need to define the proprocessor symbol
 <P>
 Finally, <CODE>dlltest.c</CODE> is a sample program using the DLL.  It has a
 project file, <CODE>dlltest.dsp</CODE>.
+
+</P>
+<P>
+If you just want a makefile for Visual C, have a look at
+<CODE>makefile.msc</CODE>.
+
+</P>
+<P>
+Be aware that if you compile <CODE>bzip2</CODE> itself on Win32, you must set
+<CODE>BZ_UNIX</CODE> to 0 and <CODE>BZ_LCCWIN32</CODE> to 1, in the file
+<CODE>bzip2.c</CODE>, before compiling.  Otherwise the resulting binary won't
+work correctly.
 
 </P>
 <P>
