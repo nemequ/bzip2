@@ -1,19 +1,32 @@
+<HTML>
+<HEAD>
+<!-- This HTML file has been created by texi2html 1.51
+     from manual.texi on 23 August 1998 -->
 
-bzip2(1)                                                 bzip2(1)
+<TITLE>bzip2 and libbzip2 - How to use bzip2</TITLE>
+</HEAD>
+<BODY>
+Go to the <A HREF="manual_1.html">first</A>, <A HREF="manual_1.html">previous</A>, <A HREF="manual_3.html">next</A>, <A HREF="manual_4.html">last</A> section, <A HREF="manual_toc.html">table of contents</A>.
+<P><HR><P>
 
 
+<H1><A NAME="SEC2" HREF="manual_toc.html#TOC2">How to use <CODE>bzip2</CODE></A></H1>
+
+<P>
+This chapter contains a copy of the <CODE>bzip2</CODE> man page,
+and nothing else.
+
+<PRE>
 NAME
        bzip2, bunzip2 - a block-sorting file compressor, v0.9.0
        bzcat - decompresses files to stdout
        bzip2recover - recovers data from damaged bzip2 files
-
 
 SYNOPSIS
        bzip2 [ -cdfkstvzVL123456789 ] [ filenames ...  ]
        bunzip2 [ -fkvsVL ] [ filenames ...  ]
        bzcat [ -s ] [ filenames ...  ]
        bzip2recover filename
-
 
 DESCRIPTION
        bzip2  compresses  files  using the Burrows-Wheeler block-
@@ -93,10 +106,9 @@ DESCRIPTION
        files.
 
        Return  values:  0  for a normal exit, 1 for environmental
-       problems (file not found, invalid flags, I/O errors,  &c),
+       problems (file not found, invalid flags, I/O errors,  &#38;c),
        2 to indicate a corrupt compressed file, 3 for an internal
        consistency error (eg, bug) which caused bzip2 to panic.
-
 
 MEMORY MANAGEMENT
        Bzip2 compresses large files in blocks.   The  block  size
@@ -173,7 +185,6 @@ MEMORY MANAGEMENT
             -8      6000k      3300k        2100k      828642
             -9      6700k      3700k        2350k      828642
 
-
 OPTIONS
        -c --stdout
               Compress or decompress to standard output.  -c will
@@ -248,7 +259,6 @@ OPTIONS
               Opposite  of  --repetitive-fast;  try  a lot harder
               before resorting to randomisation.
 
-
 RECOVERING DATA FROM DAMAGED FILES
        bzip2 compresses files in blocks, usually 900kbytes  long.
        Each block is handled independently.  If a media or trans-
@@ -273,7 +283,7 @@ RECOVERING DATA FROM DAMAGED FILES
        "rec0002file.bz2", etc, containing the  extracted  blocks.
        The  output  filenames  are  designed  so  that the use of
        wildcards in subsequent processing -- for example,  "bzip2
-       -dc  rec*file.bz2  > recovered_data" -- lists the files in
+       -dc  rec*file.bz2  &#62; recovered_data" -- lists the files in
        the "right" order.
 
        bzip2recover should be of most use dealing with large .bz2
@@ -283,7 +293,6 @@ RECOVERING DATA FROM DAMAGED FILES
        imise any potential data loss through media  or  transmis-
        sion errors, you might consider compressing with a smaller
        block size.
-
 
 PERFORMANCE NOTES
        The sorting phase of compression gathers together  similar
@@ -311,7 +320,6 @@ PERFORMANCE NOTES
        large performance improvements.  I imagine bzip2 will per-
        form best on machines with very large caches.
 
-
 CAVEATS
        I/O  error  messages  are not as helpful as they could be.
        Bzip2 tries hard to detect I/O errors  and  exit  cleanly,
@@ -333,10 +341,8 @@ CAVEATS
        files more than 512 megabytes long.  This could easily  be
        fixed.
 
-
 AUTHOR
        Julian Seward, jseward@acm.org.
-       http://www.muraroa.demon.co.uk
 
        The ideas embodied in bzip2 are due to (at least) the fol-
        lowing people: Michael Burrows and David Wheeler (for  the
@@ -353,3 +359,9 @@ AUTHOR
        compression performance.  Many people sent patches, helped
        with portability problems, lent machines, gave advice  and
        were generally helpful.
+</PRE>
+
+<P><HR><P>
+Go to the <A HREF="manual_1.html">first</A>, <A HREF="manual_1.html">previous</A>, <A HREF="manual_3.html">next</A>, <A HREF="manual_4.html">last</A> section, <A HREF="manual_toc.html">table of contents</A>.
+</BODY>
+</HTML>
